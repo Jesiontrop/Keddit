@@ -1,21 +1,21 @@
 package com.jesiontrop.keddit.feature.news
 
 import android.os.Bundle
-import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import com.jesiontrop.keddit.R
 import com.jesiontrop.keddit.base.repo.news.NewsAdapter
-import com.jesiontrop.keddit.base.utils.data.RedditNewsItem
-import com.jesiontrop.keddit.base.utils.extensions.getFriendlyTime
+import com.jesiontrop.keddit.base.repo.news.NewsManager
 import com.jesiontrop.keddit.base.utils.extensions.inflate
+import com.jesiontrop.keddit.core_ui.RxBaseFragment
+import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.fragment_news.*
 
-class NewsFragment : Fragment() {
+class NewsFragment : RxBaseFragment() {
 
     companion object {
         const val TAG = "NewsFragment"
@@ -24,6 +24,8 @@ class NewsFragment : Fragment() {
     private val mNewsRecyclerView : RecyclerView by lazy {
         news_list
     }
+
+    private val newsManager by lazy {NewsManager()}
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -43,19 +45,22 @@ class NewsFragment : Fragment() {
         initAdapter()
 
         if (savedInstanceState == null) {
-            val news = (1..10).map { RedditNewsItem(
-                "author$it",
-                "Title $it",
-                it,
-                1457207701L - it * 200,
-                "https://picsum.photos/200/200?image=$it",
-                "url") }
-
-            for (i in 0..9) {
-                Log.i(TAG, "${news[i].thumbnail}")
-            }
-            (news_list.adapter as NewsAdapter).addNews(news)
+            requestNews()
         }
+    }
+
+    private fun requestNews() {
+        val subscription = newsManager.getNews()
+            .subscribeOn(Schedulers.io())
+            .subscribe(
+                { retrievedNews ->
+                    (news_list.adapter as NewsAdapter).addNews(retrievedNews)
+                },
+                {e ->
+                    Snackbar.make(news_list, e.message ?: "", Snackbar.LENGTH_LONG).show()
+                }
+            )
+        disposables.add(subscription)
     }
 
     private fun initAdapter() {
