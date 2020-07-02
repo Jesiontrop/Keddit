@@ -1,24 +1,28 @@
 package com.jesiontrop.keddit.base.repo.news
 
+import com.jesiontrop.keddit.base.utils.api.RestApi
 import com.jesiontrop.keddit.base.utils.data.RedditNewsItem
 import io.reactivex.Observable
 
-class NewsManager() {
+class NewsManager(private val api: RestApi = RestApi()) {
 
-    fun getNews(): Observable<List<RedditNewsItem>> {
+    fun getNews(limit: String = "10"): Observable<List<RedditNewsItem>> {
         return Observable.create {
             subscriber ->
+            val callResponse = api.getNews("", limit)
+            val responce = callResponse.execute()
 
-            val news = (1..10).map { RedditNewsItem(
-                "author$it",
-                "Title $it",
-                it,
-                1457207701L - it * 200,
-                "https://picsum.photos/200/200?image=$it",
-                "url") }
-            
-            subscriber.onNext(news)
-            subscriber.onComplete()
+            if (responce.isSuccessful) {
+                val news = responce.body()!!.data.children.map {
+                    val item = it.data
+                    RedditNewsItem(item.author, item.title, item.num_comments,
+                                    item.created, item.thumbnail, item.url)
+                }
+                subscriber.onNext(news)
+                subscriber.onComplete()
+            } else {
+                subscriber.onError(Throwable(responce.message()))
+            }
         }
 
     }
