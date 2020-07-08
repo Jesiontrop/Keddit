@@ -20,7 +20,8 @@ import kotlinx.android.synthetic.main.fragment_news.*
 class NewsFragment : RxBaseFragment() {
 
     companion object {
-        const val TAG = "NewsFragment"
+        private const val TAG = "NewsFragment"
+        private const val KEY_REDDIT_NEWS = "redditNews"
     }
 
     private val mNewsRecyclerView : RecyclerView by lazy { news_list }
@@ -39,17 +40,29 @@ class NewsFragment : RxBaseFragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        mNewsRecyclerView.setHasFixedSize(true)
-        val linearLayout = LinearLayoutManager(activity)
-        mNewsRecyclerView.layoutManager = linearLayout
-        mNewsRecyclerView.clearOnScrollListeners()
-        mNewsRecyclerView.addOnScrollListener(
-            InfiniteScrollListener({requestNews()}, linearLayout))
+        mNewsRecyclerView.apply {
+            setHasFixedSize(true)
+            val linearLayout = LinearLayoutManager(activity)
+            layoutManager = linearLayout
+            clearOnScrollListeners()
+            addOnScrollListener(InfiniteScrollListener({ requestNews()}, linearLayout))
+        }
 
         initAdapter()
 
-        if (savedInstanceState == null) {
+        if (savedInstanceState != null) {
+            redditNews = savedInstanceState.get(KEY_REDDIT_NEWS) as RedditNews
+            (mNewsRecyclerView.adapter as NewsAdapter).clearAndAddNews(redditNews!!.news)
+        } else {
             requestNews()
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val news = (mNewsRecyclerView.adapter as NewsAdapter).getNews()
+        if (redditNews != null && news.size > 0) {
+            outState.putParcelable(KEY_REDDIT_NEWS, redditNews?.copy(news = news))
         }
     }
 
